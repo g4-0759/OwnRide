@@ -234,10 +234,25 @@ const BikeCard = ({ bike, index, selectedCity }) => {
 const BikeCatalog = () => {
   const [activeCategory, setActiveCategory] = useState("All")
   const [selectedCity, setSelectedCity] = useState("Patiala")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [sortBy, setSortBy] = useState("rating")
+  const [availableOnly, setAvailableOnly] = useState(false)
 
-  const filteredBikes = activeCategory === "All"
+  const filteredBikes = (activeCategory === "All"
     ? bikesData
-    : bikesData.filter(bike => bike.category === activeCategory)
+    : bikesData.filter(bike => bike.category === activeCategory))
+    .filter(bike => {
+      const searchText = `${bike.name} ${bike.category} ${bike.specs.engine}`.toLowerCase()
+      return searchText.includes(searchQuery.trim().toLowerCase())
+    })
+    .filter(bike => !availableOnly || bike.availableIn.includes(selectedCity))
+    .sort((first, second) => {
+      if (sortBy === "name") return first.name.localeCompare(second.name)
+      if (sortBy === "mileage") {
+        return parseInt(second.specs.mileage, 10) - parseInt(first.specs.mileage, 10)
+      }
+      return second.rating - first.rating
+    })
 
   return (
     <section className="catalog" id="bikes">
@@ -294,6 +309,39 @@ const BikeCatalog = () => {
           </div>
         </motion.div>
 
+        <div className="catalog-toolbar">
+          <label className="catalog-search">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-4-4" />
+            </svg>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={event => setSearchQuery(event.target.value)}
+              placeholder="Search bikes or engine size"
+              aria-label="Search bikes by name, category, or engine size"
+            />
+          </label>
+          <label className="catalog-sort">
+            <span>Sort by</span>
+            <select value={sortBy} onChange={event => setSortBy(event.target.value)} aria-label="Sort bikes">
+              <option value="rating">Top rated</option>
+              <option value="mileage">Best mileage</option>
+              <option value="name">Name A–Z</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className={`availability-toggle ${availableOnly ? 'active' : ''}`}
+            onClick={() => setAvailableOnly(value => !value)}
+            aria-pressed={availableOnly}
+          >
+            <span className="availability-toggle-indicator" />
+            Available in {selectedCity}
+          </button>
+        </div>
+
         <motion.div
           className="filter-tabs"
           initial={{ opacity: 0, y: 20 }}
@@ -314,13 +362,37 @@ const BikeCatalog = () => {
           ))}
         </motion.div>
 
+        <p className="catalog-results" aria-live="polite">
+            Showing <strong>{filteredBikes.length}</strong> {filteredBikes.length === 1 ? 'bike' : 'bikes'}
+            {activeCategory !== "All" ? ` in ${activeCategory}` : ''}
+            {searchQuery.trim() ? ` matching “${searchQuery.trim()}”` : ''}
+        </p>
+
         <div className="bikes-grid">
-          <AnimatePresence mode="wait">
-            {filteredBikes.map((bike, index) => (
-              <BikeCard key={bike.id} bike={bike} index={index} selectedCity={selectedCity} />
-            ))}
-          </AnimatePresence>
+            <AnimatePresence mode="wait">
+              {filteredBikes.map((bike, index) => (
+                <BikeCard key={bike.id} bike={bike} index={index} selectedCity={selectedCity} />
+              ))}
+            </AnimatePresence>
         </div>
+        {filteredBikes.length === 0 && (
+            <div className="catalog-empty-state">
+              <span className="catalog-empty-icon">⌕</span>
+              <h3>No bikes found</h3>
+              <p>Try another search or update your filters to see more rides.</p>
+              <button
+                type="button"
+                className="catalog-reset-btn"
+                onClick={() => {
+                  setSearchQuery("")
+                  setActiveCategory("All")
+                  setAvailableOnly(false)
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+        )}
       </div>
     </section>
   )

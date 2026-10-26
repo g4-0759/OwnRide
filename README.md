@@ -15,6 +15,7 @@ A sleek, modern bike rental website built with React, featuring smooth animation
 - **Dark / Light Mode** — Toggle between themes, persists in localStorage
 - **Smooth Animations** — Framer Motion powered scroll reveals, hover effects, page transitions
 - **Razorpay Payments** — Real checkout gateway with UPI support (GPay, PhonePe, Paytm)
+- **Post-booking Reviews** — Riders can rate and review completed bookings; reviews are shared across visitors through Supabase
 - **Responsive Design** — Works perfectly on mobile, tablet, and desktop
 - **3-Step Booking Flow** — Details → Schedule → Payment with animated steps
 
@@ -59,6 +60,18 @@ npm run dev
 2. Get your test API key
 3. Replace `rzp_test_1234567890` in `src/pages/BookingPage.jsx` with your key
 4. All bike rents are set to **₹1** for demo purposes
+
+## ⭐ Shared Reviews Setup
+
+Reviews are stored in Supabase so they are visible to visitors using different browser accounts.
+
+1. Create a Supabase project at [supabase.com](https://supabase.com).
+2. Run the SQL in `supabase/schema.sql` using the Supabase SQL Editor.
+3. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from your Supabase project API settings. Use only the publishable/anon key in frontend configuration; never put a service-role key in the app.
+4. Restart the Vite dev server. For Vercel, add the same two environment variables in the project settings and redeploy.
+
+Previously saved browser-local reviews are imported into Supabase when the Reviews section next loads. The table allows public reading and submissions, but not public updates or deletes.
+5. To try reviews without completing a payment, choose **Continue with demo booking (no payment)** on the payment step. This does not charge a card.
 
 ## 📦 Build for Production
 

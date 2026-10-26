@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { saveReview } from '../utils/reviews'
 
 const bikesData = {
   1: {
@@ -69,7 +70,14 @@ const BookingPage = () => {
   })
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [isDemoBooking, setIsDemoBooking] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
   const [imgError, setImgError] = useState(false)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewSubmitted, setReviewSubmitted] = useState(false)
+  const [isSavingReview, setIsSavingReview] = useState(false)
+  const [reviewError, setReviewError] = useState('')
 
   useEffect(() => {
     const script = document.createElement('script')
@@ -100,11 +108,16 @@ const BookingPage = () => {
 
   const handlePayment = async () => {
     setIsProcessing(true)
+    setPaymentError('')
     const orderAmount = bike.price * bookingData.duration
 
     try {
+      if (typeof window.Razorpay !== 'function') {
+        throw new Error('Razorpay checkout did not load.')
+      }
+
       const options = {
-        key: "rzp_test_1234567890",
+        key: "rzp_test_TbcyylXVuNeyyU",
         amount: orderAmount * 100,
         currency: "INR",
         name: "OwnRide Bike Rental",
@@ -157,7 +170,13 @@ const BookingPage = () => {
     } catch (error) {
       console.error("Payment error:", error)
       setIsProcessing(false)
+      setPaymentError('Razorpay could not be started. Try again or use the demo booking option below.')
     }
+  }
+
+  const handleDemoBooking = () => {
+    setIsDemoBooking(true)
+    setPaymentSuccess(true)
   }
 
   if (!bike) {
@@ -188,7 +207,7 @@ const BookingPage = () => {
             >
               <div className="checkmark-icon">✓</div>
             </motion.div>
-            <h2>Payment Successful!</h2>
+            <h2>{isDemoBooking ? 'Demo Booking Confirmed!' : 'Payment Successful!'}</h2>
             <p>Thank you for booking <strong>{bike.name}</strong></p>
             <div className="booking-summary">
               <div className="summary-item">
@@ -204,15 +223,93 @@ const BookingPage = () => {
                 <span>{bookingData.pickupLocation}</span>
               </div>
               <div className="summary-item total">
-                <span>Total Paid:</span>
+                <span>{isDemoBooking ? 'Demo total (not charged):' : 'Total Paid:'}</span>
                 <span>₹{bike.price * bookingData.duration}</span>
               </div>
             </div>
             <p className="confirmation-email">
-              A confirmation email has been sent to <strong>{bookingData.email}</strong>
+              {isDemoBooking
+                ? 'This demo booking did not charge a payment method or send an email.'
+                : <>A confirmation email has been sent to <strong>{bookingData.email}</strong></>}
             </p>
+            <div className="booking-review">
+              <h3>How was your ride?</h3>
+              <p>Share a review of your {bike.name} booking.</p>
+              {reviewSubmitted ? (
+                <p className="review-success-message" role="status">
+                  Thanks for your review! You can find it in the Reviews section.
+                </p>
+              ) : (
+                <form
+                  className="review-form"
+                  onSubmit={async (event) => {
+                    event.preventDefault()
+                    const comment = reviewComment.trim()
+                    if (!comment) {
+                      setReviewError('Please write a few words about your ride.')
+                      return
+                    }
+
+                    setIsSavingReview(true)
+                    try {
+                      await saveReview({
+                        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                        name: bookingData.name,
+                        bikeName: bike.name,
+                        rating: reviewRating,
+                        comment,
+                        createdAt: new Date().toISOString()
+                      })
+                      setReviewSubmitted(true)
+                      setReviewError('')
+                    } catch (error) {
+                      console.error('Could not save review:', error)
+                      setReviewError(error instanceof Error
+                        ? error.message
+                        : 'Your review could not be saved. Please try again.')
+                    } finally {
+                      setIsSavingReview(false)
+                    }
+                  }}
+                >
+                  <fieldset className="review-rating-picker">
+                    <legend>Your rating</legend>
+                    <div className="review-stars">
+                      {[1, 2, 3, 4, 5].map((rating) => (
+                        <button
+                          key={rating}
+                          type="button"
+                          className={rating <= reviewRating ? 'selected' : ''}
+                          onClick={() => setReviewRating(rating)}
+                          aria-label={`${rating} star${rating === 1 ? '' : 's'}`}
+                          aria-pressed={reviewRating === rating}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <label className="review-comment-label" htmlFor="booking-review-comment">
+                    Your review
+                  </label>
+                  <textarea
+                    id="booking-review-comment"
+                    value={reviewComment}
+                    onChange={(event) => setReviewComment(event.target.value)}
+                    placeholder="Tell us about your ride..."
+                    rows={4}
+                    maxLength={1000}
+                    required
+                  />
+                  {reviewError && <p className="review-error" role="alert">{reviewError}</p>}
+                  <button className="btn-primary" type="submit" disabled={isSavingReview}>
+                    {isSavingReview ? 'Saving review...' : 'Submit Review'}
+                  </button>
+                </form>
+              )}
+            </div>
             <motion.button
-              className="btn-primary"
+              className="btn-primary success-home-btn"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/')}
@@ -466,6 +563,14 @@ const BookingPage = () => {
                       </svg>
                     </motion.button>
                   </div>
+                  {paymentError && <p className="payment-error" role="alert">{paymentError}</p>}
+                  <button
+                    type="button"
+                    className="btn-demo-booking"
+                    onClick={handleDemoBooking}
+                  >
+                    Continue with demo booking (no payment)
+                  </button>
                 </motion.div>
               )}
 
@@ -540,6 +645,14 @@ const BookingPage = () => {
                       )}
                     </motion.button>
                   </div>
+                  {paymentError && <p className="payment-error" role="alert">{paymentError}</p>}
+                  <button
+                    type="button"
+                    className="btn-demo-booking"
+                    onClick={handleDemoBooking}
+                  >
+                    Continue with demo booking (no payment)
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>

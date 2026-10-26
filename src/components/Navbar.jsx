@@ -68,6 +68,7 @@ const Navbar = () => {
           <a href="#bikes" className="nav-link">Bikes</a>
           <a href="#about" className="nav-link">About</a>
           <a href="#contact" className="nav-link">Contact</a>
+          <Link to="/#reviews" className="nav-link">Reviews</Link>
         </div>
 
         <div className="nav-actions">
@@ -131,6 +132,7 @@ const Navbar = () => {
             <a href="#bikes" className="mobile-link" onClick={() => setMenuOpen(false)}>Bikes</a>
             <a href="#about" className="mobile-link" onClick={() => setMenuOpen(false)}>About</a>
             <a href="#contact" className="mobile-link" onClick={() => setMenuOpen(false)}>Contact</a>
+            <Link to="/#reviews" className="mobile-link" onClick={() => setMenuOpen(false)}>Reviews</Link>
             <div className="mobile-theme-toggle">
               <span>Theme</span>
               <motion.button
